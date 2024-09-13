@@ -6,8 +6,7 @@
 #include <time.h> 																	// Time functions
 
 
-
-int int main(int argc, char const *argv[])											// placeholder for future commits
+int main(int argc, char const *argv[])											// placeholder for future commits
 {
 	/* code */
 	return 0;
