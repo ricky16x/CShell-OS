@@ -33,7 +33,7 @@ ls
 ./<output-file-name>
 ```
 
-### **Note**: 
+### **Note**: If you used `make` to build, the output-file-name is `shell`. You need to run `./shell` to run it.
 
 This should create the shell loop as below:
 
@@ -43,7 +43,7 @@ CSE231@GP44:~$>
 where you can run your commands. Each command starts a process with a unique PID, which can be seen using the `bash_history` command.
 
 
-To cleanup, run:
+#### To cleanup, run:
 ```bash
 make clean
 ```
