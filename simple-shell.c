@@ -44,6 +44,18 @@ int execute_cmd(char *cmd) {
     int bgp = 0;
     char *argv[BUFFER_SIZE];
 
+    if (strncmp(cmd, "cd", 2) == 0 && (cmd[2] == ' ' || cmd[2] == '\0')) {
+        char *dir = strtok(cmd + 3, " "); 
+        if (dir == NULL) {
+            dir = getenv("HOME"); 
+        }
+
+        
+        if (chdir(dir) != 0) {
+            perror("cd failed");
+        }
+        return 0;
+    }
 
     // check for background & cmd
     if (cmd[strlen(cmd) - 1] == '&') {
