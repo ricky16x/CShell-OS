@@ -1,7 +1,7 @@
 # SimpleShell in C - Assignment 2 for OS - CSE231 Monsoon 2024
 
 
-You can find the course code in - [CShell-OS](https://github.com/ricky16x/CShell-OS)
+You can find the source code in - [CShell-OS](https://github.com/ricky16x/CShell-OS)
 
 
 Developed by **Rounak Dey** and **Karan Kumar** (Roll Nos. 2023449 and 2023270) for the course **CSE231 - Operating Systems** under **Prof. Vivek Kumar**, Monsoon 2024.
@@ -10,9 +10,10 @@ This assignment is shell program written in C. It implements command execution, 
 
 ## How to Compile
 
-To compile the Simple Shell, go to the `CShell-OS` directory and run the following:
+To compile the Simple Shell, clone this repository and go to the `CShell-OS` directory and run the following:
 
 ```bash
+git clone https://github.com/ricky16x/CShell-OS
 cd CShell-OS
 ls
 gcc -o <output-file-name> simple-shell.c
@@ -21,6 +22,7 @@ gcc -o <output-file-name> simple-shell.c
 or simply run,
 
 ```bash
+git clone https://github.com/ricky16x/CShell-OS)
 cd CShell-OS
 make
 ```
@@ -47,6 +49,7 @@ where you can run your commands. Each command starts a process with a unique PID
 ```bash
 make clean
 ```
+
 
 
 ---
