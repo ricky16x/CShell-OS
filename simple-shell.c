@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE 700
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,7 +25,6 @@ int main();     // ricky
 
 
 
-
 //cmd history 
 typedef struct {
     char cmd[BUFFER_SIZE];
@@ -37,29 +37,119 @@ typedef struct {
 cmdHistory history[MAX_HISTORY];
 int history_index = 0; //counting history
 
+// pipe handler
+int handle_piped_cmds(char *cmd) {
+    char *pipe_position;          
+    int fd[2];                    
+    int previous_fd = 0;          
+    char *argv[BUFFER_SIZE];
+    time_t start_time;
+        time(&start_time);
+    
+    
+    // strchr returns reference to the first position of |
+    while ((pipe_position = strchr(cmd, '|')) != NULL) {
+        *pipe_position = '\0';     
+        pipe(fd);                  //pipe created
+
+        time_t start_time;
+        time(&start_time);
+        pid_t pid = fork(); 
+        // CHILD HAS BEEN FORKED
+        if (pid == 0) {
+
+            //redirect stdin to read end of previous pipe
+            dup2(previous_fd, 0);
+
+            // check is there's a comment after pipe
+            if (pipe_position[1] != '\0') {
+                dup2(fd[1], 1);    // redirect stdout to write end of pipe
+            }
+            close(fd[0]);        // close read end  
+            
+            // break commands into arguments
+            char *parts = strtok(cmd, " ");
+            int i = 0;
+            while (parts != NULL) {
+                argv[i] = parts;   // Store each token in argv
+                i++;
+                parts = strtok(NULL, " ");
+            }
+            argv[i] = NULL;       
+            
+            // exec
+            execvp(argv[0], argv);
+            perror("Execution failed"); // Print error if execution fails
+            exit(1);                 // Exit child process
+        } else {
+            // good parents shall always wait for their child
+            wait(NULL); 
+            if (history_index < MAX_HISTORY) {
+            time_t end_time;
+            time(&end_time);
+            double duration = difftime(end_time, start_time);
+
+            strncpy(history[history_index].cmd, cmd, BUFFER_SIZE);
+            history[history_index].process_id = pid;
+            history[history_index].start_time = start_time;
+            history[history_index].exec_tim = duration;
+            history_index++;
+        } 
+
+            // Close the write end       
+            close(fd[1]);  
+
+            previous_fd = fd[0];    // update previous_fd to read end of current pipe
+            cmd = pipe_position + 1; // Move cmd pointer to the next command after the pipe, and since it's a while loop, we can find the next pipe at L40.
+        }
+    }
+    pid_t pid = fork();
+    // Handle the last command (after the last pipe)
+    if (pid == 0) {
+        dup2(previous_fd, 0);       // Redirect input from the previous pipe
+        
+        // Parse the final cmd into arguments
+        char *parts = strtok(cmd, " ");
+        int i = 0;
+        while (parts != NULL) {
+            argv[i++] = parts;      // Store each token in argv
+            parts = strtok(NULL, " ");
+        }
+        argv[i] = NULL;             // Null-terminate the argument list
+        
+        execvp(argv[0], argv);     // Execute the final command
+        perror("Execution failed"); // Print error if execution fails
+        exit(1);                   // Exit child process
+    } else {
+        close(previous_fd);         // Close the read end of the last pipe
+        wait(NULL);                 // Wait for the last child process to finish
+
+        if (history_index < MAX_HISTORY) {
+            time_t end_time;
+            time(&end_time);
+            double duration = difftime(end_time, start_time);
+
+            strncpy(history[history_index].cmd, cmd, BUFFER_SIZE);
+            history[history_index].process_id = pid;
+            history[history_index].start_time = start_time;
+            history[history_index].exec_tim = duration;
+            history_index++;
+        }
+    }
+
+    return 0; // Return success
+}
 
 int execute_cmd(char *cmd) {
 
 
-    int bgp = 0;
+    int is_background = 0;
     char *argv[BUFFER_SIZE];
 
-    if (strncmp(cmd, "cd", 2) == 0 && (cmd[2] == ' ' || cmd[2] == '\0')) {
-        char *dir = strtok(cmd + 3, " "); 
-        if (dir == NULL) {
-            dir = getenv("HOME"); 
-        }
-
-        
-        if (chdir(dir) != 0) {
-            perror("cd failed");
-        }
-        return 0;
-    }
 
     // check for background & cmd
     if (cmd[strlen(cmd) - 1] == '&') {
-        bgp = 1;
+        is_background = 1;
         cmd[strlen(cmd) - 1] = '\0'; 
     }
 
@@ -94,8 +184,7 @@ int execute_cmd(char *cmd) {
     } 
     else if (pid > 0) { //fork returns child's PID to parent
         // if not a background process, the parent (shell) shall wait for the child.
-        if (!bgp
-    ) {
+        if (!is_background) {
             wait(NULL);
         }
         // while we haven't reached max history, the shell will update the history struct with the current command details for future reference
@@ -119,7 +208,13 @@ int execute_cmd(char *cmd) {
 
     return 0;
 }
-
+//cmd history
+void show_cmd_history() {
+    for (int i = 0; i < history_index; i++) {
+        printf("cmd: %s\nProcess ID: %d\nStart Time: %sDuration: %.2f seconds\n\n",
+               history[i].cmd, history[i].process_id, ctime(&history[i].start_time), history[i].exec_tim);
+    }
+}
 
 
 void signal_interrupt_handler(int signo) {
