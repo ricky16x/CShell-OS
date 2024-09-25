@@ -84,18 +84,24 @@ Displays the history of executed commands, including details like command string
 ### `signal_interrupt_handler(int signo)`
 Handles `SIGINT` signals (Ctrl+C) by displaying the command history and exiting the shell gracefully. It prints a newline, calls `show_cmd_history()`, and terminates the program. This ensures that the shell handles interrupts without abruptly terminating.
 
+
 ---
 ## Limitations of the Shell Program
 ---
 
-1. **No Support for I/O Redirection**:
-   - Implementing I/O redirection would require handling multiple file descriptors and modifying the execution flow significantly, which was beyond the current project scope and timeline.
+1. **No I/O redirection**:
+   - Implementing I/O redirection would require handling multiple file descriptors and modifying the execution flow significantly, which was beyond the current project scope and timeline. 
 
-2. **No Support for Advanced Features**:
+2. **No support for command substituton and logical operators like && and ||**:
    - Features like command substitution and logical operators add significant complexity to the command parsing logic. Due to time constraints, we focused on ensuring reliable execution of basic and piped commands.
 
+3. **No command suggestions with `tab` key:**
+    - Partially typing a command and pressing the `tab` key shows the available related commands. Our shell doesn't do that. We believe that it would increase complexity multifold and was not warranted for a `SimpleShell`.
 
-3. **Limited Signal Handling**:
+4.  **Going through command history using arrow-keys:** 
+    - We have only handled the `Ctrl+C` interrupt for this shell. The above would not add any significant value to the shell as such and hence, not implemented.
+    
+5. **Limited signal handling**:
    - Handling additional signals such as `SIGTSTP` and `SIGQUIT` would require more complex state management and interrupt handling, which we avoided to keep the implementation straightforward and focused on essential features.
 
 
