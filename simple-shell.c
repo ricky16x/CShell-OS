@@ -1,4 +1,4 @@
-#define _XOPEN_SOURCE 700
+#define _XOPEN_SOURCE 700  // line 23x gives error with VSCode. I use Sublime, but for everyone who uses VSc, this fixed it - taken from Stack Overflow
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +11,6 @@
 #define BUFFER_SIZE 1024
 #define MAX_HISTORY 200
 
-
 //made this array for global action, used in main() and self explanatory
 const char *excm[] = {"bash_history", "exit"};
 
@@ -20,10 +19,7 @@ int handle_piped_cmds(char *cmd); // karan
 int execute_cmd(char *cmd); // ricky
 void show_cmd_history(); // karan
 void signal_interrupt_handler(int signo); //ricky
-void sighan(); //ricky
-int main();     // ricky
-
-
+void record_command_history(const char *cmd, pid_t pid, time_t start_time); // Function declaration
 
 //cmd history 
 typedef struct {
@@ -37,6 +33,21 @@ typedef struct {
 cmdHistory history[MAX_HISTORY];
 int history_index = 0; //counting history
 
+// Function to record command history
+void record_command_history(const char *cmd, pid_t pid, time_t start_time) {
+    if (history_index < MAX_HISTORY) {
+        time_t end_time;
+        time(&end_time);
+        double duration = difftime(end_time, start_time);
+
+        strncpy(history[history_index].cmd, cmd, BUFFER_SIZE);
+        history[history_index].process_id = pid;
+        history[history_index].start_time = start_time;
+        history[history_index].exec_tim = duration;
+        history_index++;
+    }
+}
+
 // pipe handler
 int handle_piped_cmds(char *cmd) {
     char *pipe_position;          
@@ -44,20 +55,20 @@ int handle_piped_cmds(char *cmd) {
     int previous_fd = 0;          
     char *argv[BUFFER_SIZE];
     time_t start_time;
-        time(&start_time);
-    
+    time(&start_time);
     
     // strchr returns reference to the first position of |
     while ((pipe_position = strchr(cmd, '|')) != NULL) {
         *pipe_position = '\0';     
-        pipe(fd);                  //pipe created
+        
+        if (pipe(fd) == -1) {
+            perror("Pipe failed");
+            return -1;
+        }
 
-        time_t start_time;
-        time(&start_time);
         pid_t pid = fork(); 
         // CHILD HAS BEEN FORKED
         if (pid == 0) {
-
             //redirect stdin to read end of previous pipe
             dup2(previous_fd, 0);
 
@@ -84,68 +95,46 @@ int handle_piped_cmds(char *cmd) {
         } else {
             // good parents shall always wait for their child
             wait(NULL); 
-            if (history_index < MAX_HISTORY) {
-            time_t end_time;
-            time(&end_time);
-            double duration = difftime(end_time, start_time);
-
-            strncpy(history[history_index].cmd, cmd, BUFFER_SIZE);
-            history[history_index].process_id = pid;
-            history[history_index].start_time = start_time;
-            history[history_index].exec_tim = duration;
-            history_index++;
-        } 
-
-            // Close the write end       
-            close(fd[1]);  
+            record_command_history(cmd, pid, start_time); // Record history
+            close(fd[1]);  // Close the write end       
 
             previous_fd = fd[0];    // update previous_fd to read end of current pipe
             cmd = pipe_position + 1; // Move cmd pointer to the next command after the pipe, and since it's a while loop, we can find the next pipe at L40.
         }
     }
+    //CHILD FORKED :D
     pid_t pid = fork();
+
     // Handle the last command (after the last pipe)
-    if (pid == 0) {
-        dup2(previous_fd, 0);       // Redirect input from the previous pipe
+    if (pid == 0) { //child code
+         // Redirect input from the previous pipe
+        dup2(previous_fd, 0);      
         
         // Parse the final cmd into arguments
         char *parts = strtok(cmd, " ");
         int i = 0;
         while (parts != NULL) {
-            argv[i++] = parts;      // Store each token in argv
+            argv[i++] = parts;      
             parts = strtok(NULL, " ");
         }
-        argv[i] = NULL;             // Null-terminate the argument list
+        argv[i] = NULL;             
         
-        execvp(argv[0], argv);     // Execute the final command
-        perror("Execution failed"); // Print error if execution fails
+        execvp(argv[0], argv);     //exec
+        perror("Execution failed"); 
         exit(1);                   // Exit child process
     } else {
         close(previous_fd);         // Close the read end of the last pipe
         wait(NULL);                 // Wait for the last child process to finish
-
-        if (history_index < MAX_HISTORY) {
-            time_t end_time;
-            time(&end_time);
-            double duration = difftime(end_time, start_time);
-
-            strncpy(history[history_index].cmd, cmd, BUFFER_SIZE);
-            history[history_index].process_id = pid;
-            history[history_index].start_time = start_time;
-            history[history_index].exec_tim = duration;
-            history_index++;
-        }
+        record_command_history(cmd, pid, start_time); // Record history
     }
 
     return 0; // Return success
 }
 
+// Command execution function
 int execute_cmd(char *cmd) {
-
-
     int is_background = 0;
     char *argv[BUFFER_SIZE];
-
 
     // check for background & cmd
     if (cmd[strlen(cmd) - 1] == '&') {
@@ -157,7 +146,7 @@ int execute_cmd(char *cmd) {
     time_t start_time;
     time(&start_time);
 
-    // this if returns the first occurance of `|` in the command. if it is anything but zero, we start handling a pipe
+    // this if returns the first occurrence of `|` in the command. if it is anything but zero, we start handling a pipe
     if (strchr(cmd, '|')) {
         return handle_piped_cmds(cmd);
     }
@@ -188,26 +177,17 @@ int execute_cmd(char *cmd) {
             wait(NULL);
         }
         // while we haven't reached max history, the shell will update the history struct with the current command details for future reference
-        if (history_index < MAX_HISTORY) {
-            time_t end_time;
-            time(&end_time);
-            double duration = difftime(end_time, start_time);
-
-            strncpy(history[history_index].cmd, cmd, BUFFER_SIZE);
-            history[history_index].process_id = pid;
-            history[history_index].start_time = start_time;
-            history[history_index].exec_tim = duration;
-            history_index++;
-        }
+        record_command_history(cmd, pid, start_time); // Record history
     }
     else {
-        //error handlin
+        //error handling
         perror("Fork failed");
         return -1;
     }
 
     return 0;
 }
+
 //cmd history
 void show_cmd_history() {
     for (int i = 0; i < history_index; i++) {
@@ -216,7 +196,7 @@ void show_cmd_history() {
     }
 }
 
-
+// Signal interrupt handler
 void signal_interrupt_handler(int signo) {
     if (signo == SIGINT) {
         printf("\n");
@@ -225,29 +205,19 @@ void signal_interrupt_handler(int signo) {
     }
 }
 
-
-// signal handler code. this initialises it
-void sighan() {
+// entrypoint
+int main() {
     struct sigaction sa;
     sa.sa_handler = signal_interrupt_handler;
     sa.sa_flags = SA_RESTART | SA_SIGINFO;
     sigemptyset(&sa.sa_mask);
     sigaction(SIGINT, &sa, NULL);
-}
-
-
-// entrypoint
-int main() {
-    // Initialize signal handling
-    sighan();
 
     // Input buffer for arguments
     char argv[BUFFER_SIZE];
 
     // Status variable to control the loop (1 = continue, 0 = exit)
     int status = 1;
-
-
 
     // Shell loop begins
     do {
@@ -283,4 +253,3 @@ int main() {
 
     return 0;
 }
-
