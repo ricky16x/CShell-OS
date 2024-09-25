@@ -84,9 +84,6 @@ Displays the history of executed commands, including details like command string
 ### `signal_interrupt_handler(int signo)`
 Handles `SIGINT` signals (Ctrl+C) by displaying the command history and exiting the shell gracefully. It prints a newline, calls `show_cmd_history()`, and terminates the program. This ensures that the shell handles interrupts without abruptly terminating.
 
-### `sighan()`
-Sets up the signal handler for `SIGINT` using the `sigaction` structure. It binds the `signal_interrupt_handler()` to the signal and configures the necessary flags. This function is called during initialization to ensure proper signal handling.
-
 ---
 ## Limitations of the Shell Program
 ---
