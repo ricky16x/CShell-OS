@@ -22,7 +22,7 @@ gcc -o <output-file-name> simple-shell.c
 or simply run,
 
 ```bash
-git clone https://github.com/ricky16x/CShell-OS)
+git clone https://github.com/ricky16x/CShell-OS
 cd CShell-OS
 make
 ```
